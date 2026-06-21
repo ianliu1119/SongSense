@@ -39,13 +39,6 @@ def startup():
     matcher.load_model()
 
 
-def _make_label(genre, lyric, extra):
-    """Short human-readable label for the history list."""
-    for v in (genre, extra, lyric):
-        if v and v.strip():
-            text = v.strip()
-            return text[:30] + ("…" if len(text) > 30 else "")
-    return "Hum search"
 
 
 @app.post("/search")
@@ -68,7 +61,7 @@ async def search(
         Path(audio_path).unlink(missing_ok=True)
 
     db.add_history(
-        label=_make_label(genre, lyric, extra),
+        label=matcher.generate_label(genre, lyric, extra),
         genre=genre, lyric=lyric, extra=extra,
         had_audio=audio is not None,
         result_ids=[r["id"] for r in results],

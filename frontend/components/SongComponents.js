@@ -3,8 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 // A single row in the Top-5 results list.
-export function ResultRow({ song, onSave, onUnsave, onPlay, playing }) {
-  const [saved, setSaved] = useState(false);
+export function ResultRow({ song, onSave, onUnsave, onPlay, playing, initialSaved }) {
+  const [saved, setSaved] = useState(initialSaved ?? false);
   const canPlay = !!song.preview_url;
 
   function handleBookmark() {

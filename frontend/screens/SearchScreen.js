@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
-import { search, saveSong, unsaveSong } from "../lib/api";
+import { search, saveSong, unsaveSong, getSaved } from "../lib/api";
 import { useAudioPlayer } from "../lib/useAudioPlayer";
 import { ResultRow } from "../components/SongComponents";
 
@@ -18,6 +18,7 @@ export default function SearchScreen() {
   const [recording, setRecording] = useState(null);
   const [audioUri, setAudioUri] = useState(null);
   const [results, setResults] = useState(null);
+  const [savedIds, setSavedIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const { playingId, handlePlay } = useAudioPlayer();
 
@@ -47,8 +48,12 @@ export default function SearchScreen() {
     }
     setLoading(true);
     try {
-      const res = await search({ genre, lyric, extra, audioUri });
+      const [res, saved] = await Promise.all([
+        search({ genre, lyric, extra, audioUri }),
+        getSaved(),
+      ]);
       setResults(res);
+      setSavedIds(new Set(saved.map((s) => s.id)));
     } catch (e) {
       Alert.alert("Search failed", String(e));
     } finally {
@@ -56,7 +61,7 @@ export default function SearchScreen() {
     }
   }
 
-  const topPad = { paddingTop: insets.top + 12 };
+  const topPad = { paddingTop: insets.top + 20 };
 
   if (results) {
     return (
@@ -72,6 +77,7 @@ export default function SearchScreen() {
               key={s.id}
               song={s}
               playing={playingId === s.id}
+              initialSaved={savedIds.has(s.id)}
               onPlay={handlePlay}
               onSave={(song) => saveSong(song.id)}
               onUnsave={(song) => unsaveSong(song.id)}
@@ -87,6 +93,7 @@ export default function SearchScreen() {
       style={styles.container}
       contentContainerStyle={[topPad, { paddingBottom: 40 }]}
     >
+      <Text style={styles.pageTitle}>Find a Song</Text>
       <Field n="1" label="Sound">
         <TouchableOpacity style={styles.recordBtn} onPress={toggleRecord}>
           <Ionicons
@@ -152,7 +159,8 @@ function Field({ n, label, children }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 16, backgroundColor: "#fff" },
-  heading: { fontSize: 18, fontWeight: "600", marginBottom: 8 },
+  pageTitle: { fontSize: 26, fontWeight: "700", color: "#111", marginBottom: 20 },
+  heading: { fontSize: 22, fontWeight: "700", color: "#111", marginBottom: 12 },
   field: { marginBottom: 16 },
   label: { fontSize: 13, fontWeight: "500", marginBottom: 6 },
   input: {

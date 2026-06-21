@@ -5,7 +5,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { getHistory, getHistoryResults, saveSong, unsaveSong } from "../lib/api";
+import { getHistory, getHistoryResults, saveSong, unsaveSong, getSaved } from "../lib/api";
 import { useAudioPlayer } from "../lib/useAudioPlayer";
 import { ResultRow } from "../components/SongComponents";
 
@@ -13,7 +13,8 @@ export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { playingId, handlePlay } = useAudioPlayer();
   const [items, setItems] = useState([]);
-  const [viewing, setViewing] = useState(null); // {label, results}
+  const [viewing, setViewing] = useState(null);
+  const [savedIds, setSavedIds] = useState(new Set());
 
   useFocusEffect(
     useCallback(() => {
@@ -22,7 +23,11 @@ export default function HistoryScreen() {
   );
 
   async function open(entry) {
-    const results = await getHistoryResults(entry.id);
+    const [results, saved] = await Promise.all([
+      getHistoryResults(entry.id),
+      getSaved(),
+    ]);
+    setSavedIds(new Set(saved.map((s) => s.id)));
     setViewing({ label: entry.label, results });
   }
 
@@ -37,7 +42,7 @@ export default function HistoryScreen() {
 
   if (viewing) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
+      <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
         <TouchableOpacity onPress={() => setViewing(null)} style={styles.back}>
           <Ionicons name="arrow-back" size={18} color="#3478F6" />
           <Text style={styles.backText}>back</Text>
@@ -45,7 +50,7 @@ export default function HistoryScreen() {
         <Text style={styles.heading}>{viewing.label}</Text>
         <ScrollView>
           {viewing.results.map((s) => (
-            <ResultRow key={s.id} song={s} playing={playingId === s.id} onPlay={handlePlay} onSave={(song) => saveSong(song.id)} onUnsave={(song) => unsaveSong(song.id)} />
+            <ResultRow key={s.id} song={s} playing={playingId === s.id} initialSaved={savedIds.has(s.id)} onPlay={handlePlay} onSave={(song) => saveSong(song.id)} onUnsave={(song) => unsaveSong(song.id)} />
           ))}
         </ScrollView>
       </View>
@@ -53,8 +58,8 @@ export default function HistoryScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
-      <Text style={styles.heading}>Search history</Text>
+    <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
+      <Text style={styles.heading}>History</Text>
       <ScrollView>
         {items.length === 0 && <Text style={styles.empty}>No searches yet.</Text>}
         {items.map((h) => (
@@ -70,7 +75,7 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#fff" },
-  heading: { fontSize: 18, fontWeight: "600", marginBottom: 12 },
+  heading: { fontSize: 22, fontWeight: "700", color: "#111", marginBottom: 16 },
   row: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#ddd",

@@ -21,6 +21,21 @@ _model = None
 _song_ids = []
 _song_matrix = None   # (n_songs, dim) normalized embeddings
 
+# ── Label generation descriptors ──────────────────────────────────────────────
+_VIBES = [
+    "upbeat", "melancholic", "romantic", "dark", "energetic", "chill",
+    "nostalgic", "powerful", "emotional", "calm", "aggressive", "dreamy",
+    "soulful", "funky", "epic", "raw", "playful", "intense", "gentle",
+    "mysterious", "groovy", "atmospheric", "haunting", "joyful", "bittersweet",
+    "late-night", "heartbreak", "feel-good", "rebellious", "spiritual",
+]
+_ERAS = [
+    "classic", "vintage", "80s", "90s", "2000s", "2010s", "modern",
+    "old-school", "retro", "contemporary",
+]
+_vibe_embeddings = None
+_era_embeddings = None
+
 
 def _song_to_text(s):
     parts = [
@@ -42,13 +57,15 @@ def _normalize(mat):
 
 def load_model():
     """Load the model and precompute song embeddings. Call once at startup."""
-    global _model, _song_ids, _song_matrix
+    global _model, _song_ids, _song_matrix, _vibe_embeddings, _era_embeddings
     _model = SentenceTransformer(_MODEL_NAME)
     songs = db.all_songs()
     _song_ids = [s["id"] for s in songs]
     texts = [_song_to_text(s) for s in songs]
     emb = _model.encode(texts, convert_to_numpy=True)
     _song_matrix = _normalize(emb)
+    _vibe_embeddings = _normalize(_model.encode(_VIBES, convert_to_numpy=True))
+    _era_embeddings = _normalize(_model.encode(_ERAS, convert_to_numpy=True))
 
 
 def _build_query_text(genre, lyric, extra):
@@ -68,6 +85,33 @@ def score_text(genre, lyric, extra, top_k=5):
     return [(_song_ids[i], float(sims[i])) for i in order]
 
 
+def generate_label(genre, lyric, extra):
+    """Generate a descriptive search label using semantic similarity."""
+    query = _build_query_text(genre, lyric, extra)
+    if not query:
+        return "Hum search"
+
+    q = _normalize(_model.encode([query], convert_to_numpy=True))[0]
+
+    # Top vibe descriptor
+    top_vibe = _VIBES[int(np.argmax(_vibe_embeddings @ q))]
+
+    # Top era — only include if it scores above a confidence threshold
+    era_sims = _era_embeddings @ q
+    best_era_idx = int(np.argmax(era_sims))
+    top_era = _ERAS[best_era_idx] if era_sims[best_era_idx] > 0.35 else None
+
+    # Build: "{vibe} [{era}] [{genre}]"
+    parts = [top_vibe]
+    if top_era:
+        parts.append(top_era)
+    if genre and genre.strip():
+        g = genre.strip().split(",")[0].strip()
+        parts.append(g)
+
+    return " ".join(parts)[:40]
+
+
 def score_hum(audio_path, top_k=5):
     """Phase 2 stub. Returns [] so text-only ranking is used for now."""
     return []
@@ -84,12 +128,23 @@ def search(genre, lyric, extra, audio_path=None, top_k=5):
     for sid in _song_ids:
         combined[sid] = w_text * text_scores.get(sid, 0.0) + w_hum * hum_scores.get(sid, 0.0)
 
-    ranked = sorted(combined.items(), key=lambda kv: -kv[1])[:top_k]
+    ranked = sorted(combined.items(), key=lambda kv: -kv[1])
     ids = [sid for sid, _ in ranked]
     songs = {s["id"]: s for s in db.songs_by_ids(ids)}
+
+    # Deduplicate by (title, artist) — keep highest-scoring copy
     out = []
+    seen = set()
     for sid, sc in ranked:
+        if sid not in songs:
+            continue
         s = dict(songs[sid])
+        key = (s["title"].lower(), s["artist"].lower())
+        if key in seen:
+            continue
+        seen.add(key)
         s["score"] = round(sc, 4)
         out.append(s)
+        if len(out) == top_k:
+            break
     return out

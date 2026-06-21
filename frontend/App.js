@@ -25,6 +25,8 @@ export default function App() {
           headerShown: false,
           tabBarActiveTintColor: "#3478F6",
           tabBarInactiveTintColor: "#888",
+          tabBarStyle: { height: 64, paddingBottom: 10, paddingTop: 6 },
+          tabBarLabelStyle: { fontSize: 11 },
           tabBarIcon: ({ color, size }) => (
             <Ionicons name={ICONS[route.name]} size={size} color={color} />
           ),

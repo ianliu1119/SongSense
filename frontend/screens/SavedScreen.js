@@ -21,8 +21,8 @@ export default function SavedScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
-      <Text style={styles.heading}>Saved songs</Text>
+    <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
+      <Text style={styles.heading}>Saved</Text>
       <ScrollView>
         {songs.length === 0 && <Text style={styles.empty}>No saved songs yet.</Text>}
         {songs.map((s) => (
@@ -35,6 +35,6 @@ export default function SavedScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#fff" },
-  heading: { fontSize: 18, fontWeight: "600", marginBottom: 12 },
+  heading: { fontSize: 22, fontWeight: "700", color: "#111", marginBottom: 16 },
   empty: { color: "#999", marginTop: 20 },
 });

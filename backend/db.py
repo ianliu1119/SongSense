@@ -39,9 +39,14 @@ def init_db():
             mood_keywords TEXT,           -- json array
             description   TEXT,
             preview_url   TEXT,           -- null when no playable audio
-            melody_contour TEXT           -- json array, phase 2
+            melody_contour TEXT,          -- json array, phase 2
+            artwork_url   TEXT            -- album/single cover art
         )
     """)
+    # migrate existing DBs that pre-date artwork_url
+    cols = [r[1] for r in cur.execute("PRAGMA table_info(songs)").fetchall()]
+    if "artwork_url" not in cols:
+        cur.execute("ALTER TABLE songs ADD COLUMN artwork_url TEXT")
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS search_history (
@@ -101,6 +106,7 @@ def _row_to_song(row):
         "mood_keywords": json.loads(row["mood_keywords"] or "[]"),
         "description": row["description"],
         "preview_url": row["preview_url"],
+        "artwork_url": row["artwork_url"],
     }
 
 

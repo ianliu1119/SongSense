@@ -109,7 +109,9 @@ def generate_label(genre, lyric, extra):
         g = genre.strip().split(",")[0].strip()
         parts.append(g)
 
-    return " ".join(parts)[:40]
+    label = " ".join(parts)
+    label = " ".join(w if w[0].isdigit() else w.capitalize() for w in label.split())
+    return label[:40]
 
 
 def score_hum(audio_path, top_k=5):

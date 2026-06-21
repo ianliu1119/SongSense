@@ -29,6 +29,10 @@ export async function getHistoryResults(id) {
   return (await res.json()).results;
 }
 
+export async function deleteHistory(id) {
+  await fetch(`${BASE_URL}/history/${id}`, { method: "DELETE" });
+}
+
 export async function getSaved() {
   const res = await fetch(`${BASE_URL}/saved`);
   return (await res.json()).saved;

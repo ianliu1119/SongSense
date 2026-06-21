@@ -79,6 +79,12 @@ def history_results(history_id: int):
     return {"results": db.get_history_results(history_id)}
 
 
+@app.delete("/history/{history_id}")
+def delete_history(history_id: int):
+    db.delete_history(history_id)
+    return {"ok": True}
+
+
 @app.get("/saved")
 def saved():
     return {"saved": db.list_saved()}

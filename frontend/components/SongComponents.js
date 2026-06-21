@@ -1,34 +1,33 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, Image, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { C } from "../lib/theme";
 
-const ARTWORK_SIZE = 52;
+const ART = 60;
 
-function ArtworkWithPlay({ artworkUrl, canPlay, playing, onPress }) {
+function Artwork({ uri, canPlay, playing, onPress }) {
   return (
-    <TouchableOpacity onPress={onPress} disabled={!canPlay} style={styles.artworkWrapper}>
-      {artworkUrl ? (
-        <Image source={{ uri: artworkUrl }} style={styles.artwork} />
+    <TouchableOpacity onPress={onPress} disabled={!canPlay} activeOpacity={0.85} style={styles.artWrap}>
+      {uri ? (
+        <Image source={{ uri }} style={styles.art} />
       ) : (
-        <View style={[styles.artwork, styles.artworkPlaceholder]}>
-          <Ionicons name="musical-note" size={22} color="#bbb" />
+        <View style={[styles.art, styles.artFallback]}>
+          <Ionicons name="musical-note" size={24} color={C.border} />
         </View>
       )}
-      <View style={styles.playOverlay}>
+      <View style={[styles.playOverlay, !canPlay && styles.playOverlayDimmed]}>
         <Ionicons
-          name={playing ? "pause-circle" : "play-circle"}
-          size={28}
-          color={canPlay ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.35)"}
+          name={playing ? "pause" : "play"}
+          size={20}
+          color="#fff"
         />
       </View>
     </TouchableOpacity>
   );
 }
 
-// A single row in the Top-5 results list.
 export function ResultRow({ song, onSave, onUnsave, onPlay, playing, initialSaved }) {
   const [saved, setSaved] = useState(initialSaved ?? false);
-  const canPlay = !!song.preview_url;
 
   function handleBookmark() {
     const next = !saved;
@@ -39,107 +38,84 @@ export function ResultRow({ song, onSave, onUnsave, onPlay, playing, initialSave
 
   return (
     <View style={styles.row}>
-      <ArtworkWithPlay
-        artworkUrl={song.artwork_url}
-        canPlay={canPlay}
+      <Artwork
+        uri={song.artwork_url}
+        canPlay={!!song.preview_url}
         playing={playing}
         onPress={() => onPlay?.(song)}
       />
-      <View style={styles.rowText}>
+      <View style={styles.info}>
         <Text style={styles.title} numberOfLines={1}>{song.title}</Text>
         <Text style={styles.sub} numberOfLines={1}>
           {song.artist}{song.year ? ` · ${song.year}` : ""}
         </Text>
         {!song.preview_url && (
-          <Text style={styles.noPreview}>preview unavailable</Text>
+          <Text style={styles.noPreview}>No preview available</Text>
         )}
       </View>
-      <TouchableOpacity onPress={handleBookmark} style={styles.bookmarkBtn}>
+      <TouchableOpacity onPress={handleBookmark} style={styles.bookmarkBtn} hitSlop={8}>
         <Ionicons
           name={saved ? "bookmark" : "bookmark-outline"}
-          size={24}
-          color={saved ? "#3478F6" : "#888"}
+          size={22}
+          color={saved ? C.primary : C.sub}
         />
       </TouchableOpacity>
     </View>
   );
 }
 
-// A saved-song card.
 export function SavedCard({ song, onRemove }) {
   return (
     <View style={styles.card}>
       {song.artwork_url ? (
-        <Image source={{ uri: song.artwork_url }} style={styles.cardArtwork} />
+        <Image source={{ uri: song.artwork_url }} style={styles.cardArt} />
       ) : (
-        <View style={[styles.cardArtwork, styles.artworkPlaceholder]}>
-          <Ionicons name="musical-note" size={18} color="#bbb" />
+        <View style={[styles.cardArt, styles.artFallback]}>
+          <Ionicons name="musical-note" size={18} color={C.border} />
         </View>
       )}
-      <View style={styles.rowText}>
+      <View style={styles.info}>
         <Text style={styles.title} numberOfLines={1}>{song.title}</Text>
         <Text style={styles.sub} numberOfLines={1}>
           {song.artist}{song.year ? ` · ${song.year}` : ""}
         </Text>
       </View>
-      <TouchableOpacity onPress={() => onRemove?.(song)} style={styles.bookmarkBtn}>
-        <Ionicons name="bookmark" size={22} color="#3478F6" />
+      <TouchableOpacity onPress={() => onRemove?.(song)} style={styles.bookmarkBtn} hitSlop={8}>
+        <Ionicons name="bookmark" size={20} color={C.primary} />
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Result row
   row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#ddd",
+    flexDirection: "row", alignItems: "center", gap: 14,
+    backgroundColor: C.card, borderRadius: 16, padding: 12, marginBottom: 10,
+    shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 10,
-    marginBottom: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#ddd",
-    borderRadius: 12,
-  },
-  artworkWrapper: {
-    width: ARTWORK_SIZE,
-    height: ARTWORK_SIZE,
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  artwork: {
-    width: ARTWORK_SIZE,
-    height: ARTWORK_SIZE,
-    borderRadius: 8,
-    backgroundColor: "#f0f0f0",
-  },
-  cardArtwork: {
-    width: 44,
-    height: 44,
-    borderRadius: 6,
-    backgroundColor: "#f0f0f0",
-  },
-  artworkPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  artWrap: { width: ART, height: ART, borderRadius: 12, overflow: "hidden" },
+  art:     { width: ART, height: ART, borderRadius: 12, backgroundColor: C.bg },
+  artFallback: { alignItems: "center", justifyContent: "center" },
   playOverlay: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.25)",
-    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.32)",
+    alignItems: "center", justifyContent: "center",
   },
-  rowText: { flex: 1 },
-  title: { fontSize: 15, fontWeight: "500", color: "#111" },
-  sub: { fontSize: 12, color: "#666", marginTop: 2 },
-  noPreview: { fontSize: 11, color: "#aaa", fontStyle: "italic", marginTop: 2 },
-  bookmarkBtn: { paddingLeft: 4 },
+  playOverlayDimmed: { backgroundColor: "rgba(0,0,0,0.15)" },
+  info:        { flex: 1 },
+  title:       { fontSize: 15, fontWeight: "700", color: C.text },
+  sub:         { fontSize: 12, color: C.sub, marginTop: 3 },
+  noPreview:   { fontSize: 11, color: C.placeholder, marginTop: 3, fontStyle: "italic" },
+  bookmarkBtn: { padding: 4 },
+
+  // Saved card
+  card: {
+    flexDirection: "row", alignItems: "center", gap: 14,
+    backgroundColor: C.card, borderRadius: 16, padding: 12, marginBottom: 10,
+    shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  cardArt: { width: 48, height: 48, borderRadius: 10, backgroundColor: C.bg },
 });

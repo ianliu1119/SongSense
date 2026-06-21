@@ -162,6 +162,13 @@ def list_history():
     ]
 
 
+def delete_history(history_id):
+    conn = get_conn()
+    conn.execute("DELETE FROM search_history WHERE id = ?", (history_id,))
+    conn.commit()
+    conn.close()
+
+
 def get_history_results(history_id):
     conn = get_conn()
     row = conn.execute(

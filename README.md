@@ -1,11 +1,13 @@
-# SongFinder
+# SongSense
 
-A Shazam-style mobile app that finds songs from **a hummed tune, lyrics, genre, or freeform keywords** — matched against a 20-song demo catalog.
+A Shazam-style mobile app that finds songs from **a hummed tune, lyrics, genre, or freeform keywords** — matched against a 334-song catalog using AI semantic search.
 
-- **Frontend:** Expo / React Native — three tabs (Search · History · Saved)
+- **Frontend:** Expo / React Native — runs on iOS, Android, and web
 - **Backend:** FastAPI + SQLite
-- **Matching:** `sentence-transformers` text embeddings (cosine similarity)
-- **Humming:** stubbed in phase 1, melody-matching planned for phase 2
+- **Matching:** `sentence-transformers` (`all-MiniLM-L6-v2`) text embeddings with cosine similarity
+- **Search labels:** auto-generated using semantic vibe/era matching (e.g. "Romantic Jazz", "Energetic 80s Pop")
+- **Audio previews:** 30-second clips via iTunes (modern) and Wikimedia Commons (classical)
+- **Album artwork:** fetched from iTunes / Deezer APIs
 
 ---
 
@@ -13,29 +15,36 @@ A Shazam-style mobile app that finds songs from **a hummed tune, lyrics, genre, 
 
 ```
 backend/
-  main.py          FastAPI app & endpoints
-  db.py            SQLite schema, seeding, history/saved persistence
-  matcher.py       embedding-based ranking engine
-  songs_seed.py    the 20-song catalog
+  main.py            FastAPI app & endpoints
+  db.py              SQLite schema, seeding, history/saved persistence
+  matcher.py         embedding-based ranking + search label generation
+  songs_seed.py      original 20-song seed catalog
+  expand_db.py       script that expanded catalog to 334 songs + iTunes previews
+  fetch_artwork.py   script that backfilled album artwork URLs
   requirements.txt
+  songfinder.db      SQLite database (gitignored)
+
 frontend/
-  App.js           tab navigator
-  screens/         SearchScreen, HistoryScreen, SavedScreen
-  components/       shared result row + saved card
-  lib/api.js       backend client
+  App.js             tab navigator (Search · History · Saved)
+  screens/           SearchScreen, HistoryScreen, SavedScreen
+  components/        ResultRow (artwork + play overlay + bookmark) · SavedCard
+  lib/
+    api.js           backend HTTP client
+    useAudioPlayer.js  shared audio playback hook (expo-av)
+  app.json           Expo config (iOS · Android · Web)
   package.json
 ```
 
-## The 20-song catalog
+---
 
-Songs come in two kinds because **copyright** and **the right to play audio** are separate:
+## Song catalog
 
-| Type | Examples | Searchable text | Playable preview |
-|------|----------|-----------------|------------------|
-| Public-domain classical | Mozart, Beethoven, Debussy, Vivaldi | yes | **yes** — composition is public domain; use free Musopen / IMSLP recordings |
-| Modern copyrighted | Michael Jackson, Queen, Adele, Kendrick | yes | **no** — metadata only; hosting the recording would infringe |
+334 songs across pop, rock, hip-hop, R&B, electronic, jazz, classical, country, Latin, K-pop, and metal. Previews come from two sources:
 
-Modern songs are still recognizable and fully searchable; they just show "preview unavailable." For the 10 classical entries, replace the `"PD_AUDIO"` placeholder in `songs_seed.py` with a URL to a hosted royalty-free clip.
+| Type | Preview source | Artwork source |
+|------|---------------|----------------|
+| Classical (public domain) | Wikimedia Commons MP3 transcodes | iTunes / Deezer |
+| Modern (copyrighted) | iTunes 30-second preview clips | iTunes / Deezer |
 
 ---
 
@@ -43,46 +52,58 @@ Modern songs are still recognizable and fully searchable; they just show "previe
 
 ```bash
 cd backend
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+/opt/anaconda3/bin/python3 -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-First launch downloads the embedding model (~80 MB) and seeds `songfinder.db`.
+First launch downloads the embedding model (~80 MB), runs the DB migration, and pre-computes embeddings for all 334 songs. API available at `http://localhost:8000` — interactive docs at `http://localhost:8000/docs`.
 
 ## Running the frontend
 
 ```bash
 cd frontend
-npm install
 npx expo start
 ```
 
-Then scan the QR code with the Expo Go app.
+| Key | Action |
+|-----|--------|
+| `i` | Open in iOS Simulator |
+| `a` | Open in Android Emulator |
+| `w` | Open in browser |
+| Scan QR | Open in Expo Go on your phone |
 
-> **Testing on a physical phone:** `localhost` in `lib/api.js` points at the *phone*, not your computer. Change `BASE_URL` to your computer's LAN IP, e.g. `http://192.168.1.42:8000`, and make sure both devices are on the same Wi-Fi.
+> **Physical device:** `lib/api.js` sets `BASE_URL` to your Mac's LAN IP. Update it if your IP changes, and make sure both devices are on the same Wi-Fi.
+
+---
+
+## How search works
+
+1. Each song is converted to a text string: `title · artist · genres · mood keywords · lyric snippet · description`
+2. All strings are embedded with `all-MiniLM-L6-v2` at startup and stored as a normalized matrix
+3. The user's query (genre + lyric + extra) is embedded the same way
+4. Cosine similarity is computed against all songs; top 5 are returned
+5. The search history label is generated by matching the query against vibe and era descriptor embeddings (e.g. "melancholic", "80s") and combining with the genre
+
+---
+
+## API endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/search` | Run a search (multipart: genre, lyric, extra, optional audio), store in history, return top 5 |
+| GET | `/history` | List past searches |
+| GET | `/history/{id}` | Re-fetch a past search's top 5 results |
+| GET | `/saved` | List saved songs |
+| POST | `/saved/{id}` | Bookmark a song |
+| DELETE | `/saved/{id}` | Remove a bookmark |
+| GET | `/songs` | Full catalog (debug) |
 
 ---
 
 ## Phase 2 — query by humming
 
-The hardest part, deliberately deferred. Real audio fingerprinting (what Shazam does) won't match a hum because a hum has no timbre or production — only melody. Plan:
+The microphone input is wired up but melody matching is stubbed. Plan:
 
-1. **Reference melodies.** Give each of the 20 songs a `melody_contour`: a normalized pitch sequence of its main theme. Cleanest source is hand-made or extracted MIDI.
-2. **Hum → contour.** Extract the pitch curve from the uploaded hum with `librosa` or `torchcrepe` (CREPE), normalize for key and tempo.
-3. **Compare.** Use **DTW (dynamic time warping)** to align the hum contour against each song's reference contour; lower distance = better match.
-4. **Blend.** Implement `score_hum()` in `matcher.py` and raise `w_hum` in the weighted blend so hum + text combine.
-
-For 20 songs this is very feasible without any model training. An alternative is a hosted query-by-humming API (e.g. ACRCloud) if you'd rather not build melody extraction.
-
-## Endpoints
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST | `/search` | run a search (multipart: genre, lyric, extra, optional audio), store in history, return top 5 |
-| GET | `/history` | list past searches |
-| GET | `/history/{id}` | re-fetch a past search's top 5 |
-| GET | `/saved` | list saved songs |
-| POST | `/saved/{id}` | bookmark a song |
-| DELETE | `/saved/{id}` | remove a bookmark |
-| GET | `/songs` | full catalog (debug) |
+1. **Reference melodies** — add a `melody_contour` (normalized pitch sequence) to each song, extracted from MIDI or hand-annotated
+2. **Hum → contour** — extract pitch curve from uploaded audio with `librosa` or CREPE, normalize for key/tempo
+3. **Compare** — use DTW (dynamic time warping) to score hum against each contour
+4. **Blend** — implement `score_hum()` in `matcher.py` and raise `w_hum` in the weighted blend

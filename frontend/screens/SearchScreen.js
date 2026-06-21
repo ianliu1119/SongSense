@@ -9,6 +9,7 @@ import { Audio } from "expo-av";
 import { search, saveSong, unsaveSong, getSaved } from "../lib/api";
 import { useAudioPlayer } from "../lib/useAudioPlayer";
 import { ResultRow } from "../components/SongComponents";
+import { C } from "../lib/theme";
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
@@ -61,17 +62,27 @@ export default function SearchScreen() {
     }
   }
 
-  const topPad = { paddingTop: insets.top + 20 };
+  function reset() {
+    setResults(null);
+    setGenre("");
+    setLyric("");
+    setExtra("");
+    setAudioUri(null);
+  }
+
+  const top = insets.top + 20;
 
   if (results) {
     return (
-      <View style={[styles.container, topPad]}>
-        <TouchableOpacity onPress={() => setResults(null)} style={styles.back}>
-          <Ionicons name="arrow-back" size={18} color="#3478F6" />
-          <Text style={styles.backText}>back</Text>
+      <View style={[styles.container, { paddingTop: top }]}>
+        <TouchableOpacity onPress={() => setResults(null)} style={styles.backRow}>
+          <View style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={18} color={C.primary} />
+          </View>
+          <Text style={styles.backLabel}>New search</Text>
         </TouchableOpacity>
-        <Text style={styles.heading}>Top 5 results</Text>
-        <ScrollView>
+        <Text style={styles.resultsHeading}>Top results</Text>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
           {results.map((s) => (
             <ResultRow
               key={s.id}
@@ -91,94 +102,117 @@ export default function SearchScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={[topPad, { paddingBottom: 40 }]}
+      contentContainerStyle={{ paddingTop: top, paddingBottom: 40 }}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.pageTitle}>Find a Song</Text>
-      <Field n="1" label="Sound">
-        <TouchableOpacity style={styles.recordBtn} onPress={toggleRecord}>
-          <Ionicons
-            name={recording ? "stop-circle" : "mic-outline"}
-            size={20}
-            color={recording ? "#E24B4A" : "#3478F6"}
+      <Text style={styles.appName}>SongSense</Text>
+      <Text style={styles.tagline}>What song is stuck in your head?</Text>
+
+      <View style={styles.card}>
+        <Field icon="mic-outline" label="Hum it">
+          <TouchableOpacity
+            style={[styles.recordBtn, recording && styles.recordBtnActive]}
+            onPress={toggleRecord}
+          >
+            <Ionicons
+              name={recording ? "stop-circle" : "mic"}
+              size={20}
+              color={recording ? C.danger : C.primary}
+            />
+            <Text style={[styles.recordText, recording && { color: C.danger }]}>
+              {recording ? "Recording… tap to stop" : audioUri ? "Hum recorded ✓" : "Tap to record"}
+            </Text>
+            {recording && (
+              <View style={styles.recordingDot} />
+            )}
+          </TouchableOpacity>
+        </Field>
+
+        <Field icon="musical-notes-outline" label="Genre">
+          <TextInput
+            style={styles.input}
+            placeholder="pop, jazz, hip-hop…"
+            placeholderTextColor={C.placeholder}
+            value={genre}
+            onChangeText={setGenre}
           />
-          <Text style={styles.recordText}>
-            {recording ? "Recording… tap to stop" : audioUri ? "Hum recorded ✓" : "Tap to hum / record"}
-          </Text>
-        </TouchableOpacity>
-      </Field>
+        </Field>
 
-      <Field n="2" label="Genre">
-        <TextInput
-          style={styles.input}
-          placeholder="ex. pop, rap, jazz…"
-          placeholderTextColor="#999"
-          value={genre}
-          onChangeText={setGenre}
-        />
-      </Field>
+        <Field icon="chatbubble-ellipses-outline" label="Lyrics">
+          <TextInput
+            style={[styles.input, styles.multiline]}
+            placeholder="any lyrics you remember…"
+            placeholderTextColor={C.placeholder}
+            value={lyric}
+            onChangeText={setLyric}
+            multiline
+          />
+        </Field>
 
-      <Field n="3" label="Lyric">
-        <TextInput
-          style={[styles.input, styles.multiline]}
-          placeholder="any lyrics you remember…"
-          placeholderTextColor="#999"
-          value={lyric}
-          onChangeText={setLyric}
-          multiline
-        />
-      </Field>
+        <Field icon="options-outline" label="Vibe / Era / Instruments">
+          <TextInput
+            style={[styles.input, styles.multiline]}
+            placeholder="sad, 80s, piano, female vocalist…"
+            placeholderTextColor={C.placeholder}
+            value={extra}
+            onChangeText={setExtra}
+            multiline
+          />
+        </Field>
+      </View>
 
-      <Field n="4" label="Extra info">
-        <TextInput
-          style={[styles.input, styles.multiline]}
-          placeholder="mood, era, instruments, keywords…"
-          placeholderTextColor="#999"
-          value={extra}
-          onChangeText={setExtra}
-          multiline
-        />
-      </Field>
-
-      <TouchableOpacity style={styles.goBtn} onPress={runSearch} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.goText}>Go!</Text>}
+      <TouchableOpacity style={styles.goBtn} onPress={runSearch} disabled={loading} activeOpacity={0.85}>
+        {loading
+          ? <ActivityIndicator color="#fff" />
+          : <>
+              <Ionicons name="search" size={18} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.goText}>Find Song</Text>
+            </>
+        }
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
-function Field({ n, label, children }) {
+function Field({ icon, label, children }) {
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>
-        <Text style={{ color: "#3478F6" }}>{n}</Text>{"  "}{label}
-      </Text>
+      <View style={styles.fieldHeader}>
+        <Ionicons name={icon} size={14} color={C.primary} />
+        <Text style={styles.fieldLabel}>{label}</Text>
+      </View>
       {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16, backgroundColor: "#fff" },
-  pageTitle: { fontSize: 26, fontWeight: "700", color: "#111", marginBottom: 20 },
-  heading: { fontSize: 22, fontWeight: "700", color: "#111", marginBottom: 12 },
-  field: { marginBottom: 16 },
-  label: { fontSize: 13, fontWeight: "500", marginBottom: 6 },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth, borderColor: "#bbb",
-    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14,
-  },
-  multiline: { minHeight: 56, textAlignVertical: "top" },
-  recordBtn: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: "#bbb",
-    borderRadius: 8, padding: 12,
-  },
-  recordText: { fontSize: 13, color: "#555" },
-  goBtn: {
-    backgroundColor: "#3478F6", borderRadius: 10, padding: 14,
-    alignItems: "center", marginTop: 8,
-  },
-  goText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  back: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8 },
-  backText: { color: "#3478F6", fontSize: 14 },
+  container:       { flex: 1, backgroundColor: C.bg, paddingHorizontal: 20 },
+  appName:         { fontSize: 30, fontWeight: "800", color: C.text, letterSpacing: -0.5 },
+  tagline:         { fontSize: 15, color: C.sub, marginTop: 4, marginBottom: 24 },
+  card:            { backgroundColor: C.card, borderRadius: 20, padding: 20, marginBottom: 16,
+                     shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+                     elevation: 3 },
+  field:           { marginBottom: 16 },
+  fieldHeader:     { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
+  fieldLabel:      { fontSize: 12, fontWeight: "700", color: C.sub, textTransform: "uppercase", letterSpacing: 0.5 },
+  input:           { backgroundColor: C.bg, borderRadius: 12, paddingHorizontal: 14,
+                     paddingVertical: 12, fontSize: 15, color: C.text },
+  multiline:       { minHeight: 60, textAlignVertical: "top" },
+  recordBtn:       { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.bg,
+                     borderRadius: 12, padding: 14 },
+  recordBtnActive: { backgroundColor: "#FFF0F0" },
+  recordText:      { fontSize: 14, color: C.sub, flex: 1 },
+  recordingDot:    { width: 8, height: 8, borderRadius: 4, backgroundColor: C.danger },
+  goBtn:           { backgroundColor: C.primary, borderRadius: 16, padding: 16,
+                     flexDirection: "row", alignItems: "center", justifyContent: "center",
+                     shadowColor: C.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 },
+                     elevation: 4 },
+  goText:          { color: "#fff", fontSize: 16, fontWeight: "700" },
+  backRow:         { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 20 },
+  backBtn:         { width: 32, height: 32, borderRadius: 10, backgroundColor: C.primaryLight,
+                     alignItems: "center", justifyContent: "center" },
+  backLabel:       { fontSize: 15, color: C.primary, fontWeight: "600" },
+  resultsHeading:  { fontSize: 26, fontWeight: "800", color: C.text, marginBottom: 16, letterSpacing: -0.5 },
 });

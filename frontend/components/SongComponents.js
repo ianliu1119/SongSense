@@ -1,13 +1,27 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 // A single row in the Top-5 results list.
-export function ResultRow({ song, onSave, onPlay }) {
+export function ResultRow({ song, onSave, onUnsave, onPlay, playing }) {
+  const [saved, setSaved] = useState(false);
+  const canPlay = !!song.preview_url;
+
+  function handleBookmark() {
+    const next = !saved;
+    setSaved(next);
+    if (next) onSave?.(song);
+    else onUnsave?.(song);
+  }
+
   return (
     <View style={styles.row}>
-      <TouchableOpacity onPress={() => onPlay?.(song)}>
-        <Ionicons name="play-circle-outline" size={28} color="#3478F6" />
+      <TouchableOpacity onPress={() => onPlay?.(song)} disabled={!canPlay}>
+        <Ionicons
+          name={playing ? "pause-circle" : "play-circle-outline"}
+          size={28}
+          color={canPlay ? "#3478F6" : "#ccc"}
+        />
       </TouchableOpacity>
       <View style={styles.rowText}>
         <Text style={styles.title}>{song.title}</Text>
@@ -19,8 +33,12 @@ export function ResultRow({ song, onSave, onPlay }) {
           <Text style={styles.noPreview}>preview unavailable</Text>
         )}
       </View>
-      <TouchableOpacity onPress={() => onSave?.(song)}>
-        <Ionicons name="bookmark-outline" size={24} color="#888" />
+      <TouchableOpacity onPress={handleBookmark}>
+        <Ionicons
+          name={saved ? "bookmark" : "bookmark-outline"}
+          size={24}
+          color={saved ? "#3478F6" : "#888"}
+        />
       </TouchableOpacity>
     </View>
   );

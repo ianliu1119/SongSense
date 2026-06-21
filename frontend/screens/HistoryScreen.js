@@ -2,12 +2,16 @@ import React, { useState, useCallback } from "react";
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { getHistory, getHistoryResults, saveSong } from "../lib/api";
+import { getHistory, getHistoryResults, saveSong, unsaveSong } from "../lib/api";
+import { useAudioPlayer } from "../lib/useAudioPlayer";
 import { ResultRow } from "../components/SongComponents";
 
 export default function HistoryScreen() {
+  const insets = useSafeAreaInsets();
+  const { playingId, handlePlay } = useAudioPlayer();
   const [items, setItems] = useState([]);
   const [viewing, setViewing] = useState(null); // {label, results}
 
@@ -33,7 +37,7 @@ export default function HistoryScreen() {
 
   if (viewing) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => setViewing(null)} style={styles.back}>
           <Ionicons name="arrow-back" size={18} color="#3478F6" />
           <Text style={styles.backText}>back</Text>
@@ -41,7 +45,7 @@ export default function HistoryScreen() {
         <Text style={styles.heading}>{viewing.label}</Text>
         <ScrollView>
           {viewing.results.map((s) => (
-            <ResultRow key={s.id} song={s} onSave={(song) => saveSong(song.id)} />
+            <ResultRow key={s.id} song={s} playing={playingId === s.id} onPlay={handlePlay} onSave={(song) => saveSong(song.id)} onUnsave={(song) => unsaveSong(song.id)} />
           ))}
         </ScrollView>
       </View>
@@ -49,7 +53,7 @@ export default function HistoryScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
       <Text style={styles.heading}>Search history</Text>
       <ScrollView>
         {items.length === 0 && <Text style={styles.empty}>No searches yet.</Text>}

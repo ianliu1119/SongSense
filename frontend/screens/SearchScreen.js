@@ -3,12 +3,15 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, ActivityIndicator, Alert,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
-import { search, saveSong } from "../lib/api";
+import { search, saveSong, unsaveSong } from "../lib/api";
+import { useAudioPlayer } from "../lib/useAudioPlayer";
 import { ResultRow } from "../components/SongComponents";
 
 export default function SearchScreen() {
+  const insets = useSafeAreaInsets();
   const [genre, setGenre] = useState("");
   const [lyric, setLyric] = useState("");
   const [extra, setExtra] = useState("");
@@ -16,6 +19,7 @@ export default function SearchScreen() {
   const [audioUri, setAudioUri] = useState(null);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
+  const { playingId, handlePlay } = useAudioPlayer();
 
   async function toggleRecord() {
     try {
@@ -38,6 +42,9 @@ export default function SearchScreen() {
   }
 
   async function runSearch() {
+    if (!genre.trim() && !lyric.trim() && !extra.trim() && !audioUri) {
+      return Alert.alert("Add at least one clue", "Fill in a genre, lyric, extra info, or record a hum.");
+    }
     setLoading(true);
     try {
       const res = await search({ genre, lyric, extra, audioUri });
@@ -49,9 +56,11 @@ export default function SearchScreen() {
     }
   }
 
+  const topPad = { paddingTop: insets.top + 12 };
+
   if (results) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, topPad]}>
         <TouchableOpacity onPress={() => setResults(null)} style={styles.back}>
           <Ionicons name="arrow-back" size={18} color="#3478F6" />
           <Text style={styles.backText}>back</Text>
@@ -59,7 +68,14 @@ export default function SearchScreen() {
         <Text style={styles.heading}>Top 5 results</Text>
         <ScrollView>
           {results.map((s) => (
-            <ResultRow key={s.id} song={s} onSave={(song) => saveSong(song.id)} />
+            <ResultRow
+              key={s.id}
+              song={s}
+              playing={playingId === s.id}
+              onPlay={handlePlay}
+              onSave={(song) => saveSong(song.id)}
+              onUnsave={(song) => unsaveSong(song.id)}
+            />
           ))}
         </ScrollView>
       </View>
@@ -67,7 +83,10 @@ export default function SearchScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[topPad, { paddingBottom: 40 }]}
+    >
       <Field n="1" label="Sound">
         <TouchableOpacity style={styles.recordBtn} onPress={toggleRecord}>
           <Ionicons
@@ -82,18 +101,35 @@ export default function SearchScreen() {
       </Field>
 
       <Field n="2" label="Genre">
-        <TextInput style={styles.input} placeholder="ex. pop, rap, jazz…"
-          value={genre} onChangeText={setGenre} />
+        <TextInput
+          style={styles.input}
+          placeholder="ex. pop, rap, jazz…"
+          placeholderTextColor="#999"
+          value={genre}
+          onChangeText={setGenre}
+        />
       </Field>
 
       <Field n="3" label="Lyric">
-        <TextInput style={[styles.input, styles.multiline]} placeholder="any lyrics you remember…"
-          value={lyric} onChangeText={setLyric} multiline />
+        <TextInput
+          style={[styles.input, styles.multiline]}
+          placeholder="any lyrics you remember…"
+          placeholderTextColor="#999"
+          value={lyric}
+          onChangeText={setLyric}
+          multiline
+        />
       </Field>
 
       <Field n="4" label="Extra info">
-        <TextInput style={[styles.input, styles.multiline]} placeholder="mood, era, instruments, keywords…"
-          value={extra} onChangeText={setExtra} multiline />
+        <TextInput
+          style={[styles.input, styles.multiline]}
+          placeholder="mood, era, instruments, keywords…"
+          placeholderTextColor="#999"
+          value={extra}
+          onChangeText={setExtra}
+          multiline
+        />
       </Field>
 
       <TouchableOpacity style={styles.goBtn} onPress={runSearch} disabled={loading}>
@@ -107,7 +143,7 @@ function Field({ n, label, children }) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>
-        <Text style={{ color: "#3478F6" }}>{n}</Text>  {label}
+        <Text style={{ color: "#3478F6" }}>{n}</Text>{"  "}{label}
       </Text>
       {children}
     </View>
@@ -115,7 +151,7 @@ function Field({ n, label, children }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#fff" },
+  container: { flex: 1, paddingHorizontal: 16, backgroundColor: "#fff" },
   heading: { fontSize: 18, fontWeight: "600", marginBottom: 8 },
   field: { marginBottom: 16 },
   label: { fontSize: 13, fontWeight: "500", marginBottom: 6 },

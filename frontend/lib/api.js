@@ -1,6 +1,6 @@
 // Central API client. Change BASE_URL to your machine's LAN IP when testing
 // on a physical phone (localhost won't reach your computer from the device).
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = "http://10.0.0.142:8000";
 
 export async function search({ genre, lyric, extra, audioUri }) {
   const form = new FormData();

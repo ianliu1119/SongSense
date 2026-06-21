@@ -1,10 +1,12 @@
 import React, { useState, useCallback } from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { getSaved, unsaveSong } from "../lib/api";
 import { SavedCard } from "../components/SongComponents";
 
 export default function SavedScreen() {
+  const insets = useSafeAreaInsets();
   const [songs, setSongs] = useState([]);
 
   const load = useCallback(() => {
@@ -19,7 +21,7 @@ export default function SavedScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
       <Text style={styles.heading}>Saved songs</Text>
       <ScrollView>
         {songs.length === 0 && <Text style={styles.empty}>No saved songs yet.</Text>}

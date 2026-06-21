@@ -1,6 +1,9 @@
-// Central API client. Change BASE_URL to your machine's LAN IP when testing
-// on a physical phone (localhost won't reach your computer from the device).
-const BASE_URL = "http://10.0.0.142:8000";
+import Constants from "expo-constants";
+
+// Automatically use the same host Expo is running on.
+// Works on physical devices, simulators, and web without any manual IP changes.
+const host = Constants.expoConfig?.hostUri?.split(":")[0] ?? "localhost";
+const BASE_URL = `http://${host}:8000`;
 
 export async function search({ genre, lyric, extra, audioUri }) {
   const form = new FormData();
